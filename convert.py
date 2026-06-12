@@ -24,7 +24,8 @@ table_id = tables_res['data']['items'][0]['table_id']
 
 print("正在从飞书直抽数据...")
 # 获取最多 500 条数据 (题量超过500后可在此处加翻页逻辑)
-records_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{table_id}/records?page_size=500"
+# 🌟 强行指定视图 ID，机器人就会乖乖按照你排好的顺序抓取了！
+records_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{table_id}/records?page_size=500&view_id=vewqWDFxin"
 records_res = requests.get(records_url, headers=headers).json()
 items = records_res.get('data', {}).get('items', [])
 

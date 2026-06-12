@@ -1,10 +1,9 @@
-name: Auto Convert Excel to TXT
+name: Auto Sync Feishu to TXT
 
 on:
-  push:
-    paths:
-      - '海龟汤_问卷_SoupData.xlsx' # 只有当你更新这个 Excel 时才触发机器人
-  workflow_dispatch: # 🌟 新加这一行，意思是“允许手动触发”
+  schedule:
+    - cron: '0 18 * * *' # 每天北京时间凌晨2点自动跑一次（UTC时间18点）
+  workflow_dispatch: # 随时手动触发开关
 
 jobs:
   build:
@@ -19,9 +18,13 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install openpyxl
+        run: pip install requests
 
       - name: Run Python script
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
         run: python convert.py
 
       - name: Commit and Push the TXT file
@@ -29,5 +32,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add SoupDatabase.txt
-          git commit -m "自动更新题库 TXT" || exit 0
+          git commit -m "API全自动同步飞书题库" || exit 0
           git push

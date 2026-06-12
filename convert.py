@@ -1,56 +1,68 @@
-import openpyxl
 import os
+import requests
+import json
 
-# 打开飞书固定导出的 Excel 文件
-wb = openpyxl.load_workbook('海龟汤_问卷_SoupData.xlsx')
-sheet = wb.active
+# 从 GitHub 保险柜里拿出刚才存的钥匙
+APP_ID = os.environ.get("FEISHU_APP_ID")
+APP_SECRET = os.environ.get("FEISHU_APP_SECRET")
+APP_TOKEN = os.environ.get("FEISHU_APP_TOKEN")
 
-# 🌟 智能升级：读取第一行表头，自动寻找四大数据在哪一列！
-header_row = [str(cell.value).strip() if cell.value else "" for cell in sheet[1]]
+print("正在获取飞书通行证...")
+auth_url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+auth_res = requests.post(auth_url, json={"app_id": APP_ID, "app_secret": APP_SECRET}).json()
+access_token = auth_res.get("tenant_access_token")
 
-title_idx = -1
-question_idx = -1
-answer_idx = -1
-diff_idx = -1
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json"
+}
 
-for i, col_name in enumerate(header_row):
-    # 只要表头里包含这些关键字，就自动认领这一列
-    if "标题" in col_name or "名字" in col_name or "名称" in col_name:
-        title_idx = i
-    elif "汤面" in col_name:
-        question_idx = i
-    elif "汤底" in col_name:
-        answer_idx = i
-    elif "难度" in col_name:
-        diff_idx = i
+print("正在寻找海龟汤数据表...")
+tables_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables"
+tables_res = requests.get(tables_url, headers=headers).json()
+table_id = tables_res['data']['items'][0]['table_id']
 
-# 防呆：如果问卷表头写得太奇怪没识别出来，就按原来默认的ABCD列兜底
-if title_idx == -1: title_idx = 0
-if question_idx == -1: question_idx = 1
-if answer_idx == -1: answer_idx = 2
-if diff_idx == -1: diff_idx = 3
+print("正在从飞书直抽数据...")
+# 获取最多 500 条数据 (题量超过500后可在此处加翻页逻辑)
+records_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{table_id}/records?page_size=500"
+records_res = requests.get(records_url, headers=headers).json()
+items = records_res.get('data', {}).get('items', [])
 
 lines = []
-# 从第二行开始读数据
-for row in sheet.iter_rows(min_row=2, values_only=True):
-    # 🌟 核心修复：以“汤面”作为判断标准。如果连汤面都没有，说明是废数据或空白行
-    if not row[question_idx]: 
+for item in items:
+    fields = item.get('fields', {})
+    
+    # 🌟 终极筛选：只抓取你在飞书里打勾了 "过审" 的数据！
+    is_approved = fields.get("过审", False)
+    if not is_approved:
         continue
 
-    # 精准提取数据。如果没有填标题，自动补上 "无题"
-    title = str(row[title_idx] or "无题").strip()
-    question = str(row[question_idx] or "").strip()
-    answer = str(row[answer_idx] or "").strip()
-    difficulty = str(row[diff_idx] or "中等").strip()
+    def get_text(key_word, default=""):
+        # 智能模糊匹配你截图里的列名，哪怕你以后改名了也能认出来
+        actual_key = next((k for k in fields.keys() if key_word in k), None)
+        if not actual_key: return default
+        
+        field_data = fields.get(actual_key)
+        if not field_data: return default
+        if isinstance(field_data, list):
+            # 兼容飞书的多段富文本
+            return "".join([str(x.get('text', '')) for x in field_data])
+        return str(field_data)
 
-    # 替换真实换行为程序换行
+    title = get_text("标题", "无题").strip()
+    question = get_text("谜面", "").strip()
+    answer = get_text("谜底", "").strip()
+    difficulty = get_text("难度", "中等").strip()
+
+    if not question:
+        continue
+
+    # 处理多余换行符
     question = question.replace('\n', '\\n').replace('\r', '')
     answer = answer.replace('\n', '\\n').replace('\r', '')
 
-    # 拼接成竖线格式
-    line = f"{title}|{question}|{answer}|{difficulty}"
-    lines.append(line)
+    lines.append(f"{title}|{question}|{answer}|{difficulty}")
 
-# 生成 TXT 文件，完美收工
+print(f"成功抓取 {len(lines)} 条已过审的海龟汤！正在生成 TXT...")
 with open('SoupDatabase.txt', 'w', encoding='utf-8') as f:
     f.write('\n'.join(lines))

@@ -1,0 +1,32 @@
+name: Auto Convert Excel to TXT
+
+on:
+  push:
+    paths:
+      - 'SoupData.xlsx' # 只有当你更新这个 Excel 时才触发机器人
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install openpyxl
+
+      - name: Run Python script
+        run: python convert.py
+
+      - name: Commit and Push the TXT file
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add SoupDatabase.txt
+          git commit -m "自动更新题库 TXT" || exit 0
+          git push

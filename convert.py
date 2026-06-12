@@ -1,7 +1,7 @@
 import openpyxl
 import os
 
-# 打开 Excel 文件
+# 打开飞书固定导出的 Excel 文件
 wb = openpyxl.load_workbook('海龟汤_问卷_SoupData.xlsx')
 sheet = wb.active
 
@@ -33,12 +33,12 @@ if diff_idx == -1: diff_idx = 3
 lines = []
 # 从第二行开始读数据
 for row in sheet.iter_rows(min_row=2, values_only=True):
-    # 如果这行的标题列是空的，说明读到底了，跳过
-    if not row[title_idx]: 
+    # 🌟 核心修复：以“汤面”作为判断标准。如果连汤面都没有，说明是废数据或空白行
+    if not row[question_idx]: 
         continue
 
-    # 根据刚才找到的列索引，精准提取数据
-    title = str(row[title_idx] or "").strip()
+    # 精准提取数据。如果没有填标题，自动补上 "无题"
+    title = str(row[title_idx] or "无题").strip()
     question = str(row[question_idx] or "").strip()
     answer = str(row[answer_idx] or "").strip()
     difficulty = str(row[diff_idx] or "中等").strip()
@@ -51,6 +51,6 @@ for row in sheet.iter_rows(min_row=2, values_only=True):
     line = f"{title}|{question}|{answer}|{difficulty}"
     lines.append(line)
 
-# 生成 TXT 文件
+# 生成 TXT 文件，完美收工
 with open('SoupDatabase.txt', 'w', encoding='utf-8') as f:
     f.write('\n'.join(lines))

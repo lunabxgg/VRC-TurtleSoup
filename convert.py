@@ -22,31 +22,31 @@ tables_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tabl
 tables_res = requests.get(tables_url, headers=headers).json()
 table_id = tables_res['data']['items'][0]['table_id']
 
-print("正在从飞书直抽数据...")
-# 获取最多 500 条数据 (题量超过500后可在此处加翻页逻辑)
-# 🌟 强行指定视图 ID，机器人就会乖乖按照你排好的顺序抓取了！
-records_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{table_id}/records?page_size=500&view_id=vewqWDFxin"
+# ... (前面的获取 Token 和 Table ID 代码保持不变) ...
+
+print("正在从飞书直抽原始数据(极速模式)...")
+# 🌟 删掉了拖慢速度的 view_id 参数，恢复极速拿取
+records_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{table_id}/records?page_size=500"
 records_res = requests.get(records_url, headers=headers).json()
 items = records_res.get('data', {}).get('items', [])
 
-lines = []
+normal_lines = []
+rule_line = ""
+
 for item in items:
     fields = item.get('fields', {})
     
-    # 🌟 终极筛选：只抓取你在飞书里打勾了 "过审" 的数据！
+    # 依然只抓取过审的数据
     is_approved = fields.get("过审", False)
     if not is_approved:
         continue
 
     def get_text(key_word, default=""):
-        # 智能模糊匹配你截图里的列名，哪怕你以后改名了也能认出来
         actual_key = next((k for k in fields.keys() if key_word in k), None)
         if not actual_key: return default
-        
         field_data = fields.get(actual_key)
         if not field_data: return default
         if isinstance(field_data, list):
-            # 兼容飞书的多段富文本
             return "".join([str(x.get('text', '')) for x in field_data])
         return str(field_data)
 
@@ -62,8 +62,23 @@ for item in items:
     question = question.replace('\n', '\\n').replace('\r', '')
     answer = answer.replace('\n', '\\n').replace('\r', '')
 
-    lines.append(f"{title}|{question}|{answer}|{difficulty}")
+    line_str = f"{title}|{question}|{answer}|{difficulty}"
 
-print(f"成功抓取 {len(lines)} 条已过审的海龟汤！正在生成 TXT...")
+    # 🌟 核心分拣逻辑：认出“规则”并单独存放
+    if "规则" in title or "指南" in title:
+        rule_line = line_str
+    else:
+        normal_lines.append(line_str)
+
+# 🌟 本地极速排序：把普通汤直接倒置，最新的瞬间排到最前面！
+normal_lines.reverse()
+
+# 🌟 强行置顶：把规则无条件塞到第一位
+final_lines = []
+if rule_line:
+    final_lines.append(rule_line)
+final_lines.extend(normal_lines)
+
+print(f"成功抓取并排序 {len(final_lines)} 条海龟汤！")
 with open('SoupDatabase.txt', 'w', encoding='utf-8') as f:
-    f.write('\n'.join(lines))
+    f.write('\n'.join(final_lines))

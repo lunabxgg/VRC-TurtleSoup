@@ -82,3 +82,12 @@ final_lines.extend(normal_lines)
 print(f"成功抓取并排序 {len(final_lines)} 条海龟汤！")
 with open('SoupDatabase.txt', 'w', encoding='utf-8') as f:
     f.write('\n'.join(final_lines))
+
+# 🌟 新增：主动请求 jsDelivr 清理缓存
+print("正在呼叫 jsDelivr 清理 CDN 缓存...")
+try:
+    purge_url = "https://purge.jsdelivr.net/gh/lunabxgg/VRC-TurtleSoup@main/SoupDatabase.txt"
+    purge_res = requests.get(purge_url, timeout=10)
+    print(f"缓存清理完成！状态码: {purge_res.status_code}")
+except Exception as e:
+    print(f"缓存清理请求失败: {e}")

@@ -3,7 +3,7 @@ name: Auto Convert Excel to TXT
 on:
   push:
     paths:
-      - 'SoupData.xlsx' # 只有当你更新这个 Excel 时才触发机器人
+      - '海龟汤_问卷_SoupData.xlsx' # 只有当你更新这个 Excel 时才触发机器人
   workflow_dispatch: # 🌟 新加这一行，意思是“允许手动触发”
 
 jobs:

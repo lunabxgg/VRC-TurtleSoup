@@ -22,8 +22,6 @@ tables_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tabl
 tables_res = requests.get(tables_url, headers=headers).json()
 table_id = tables_res['data']['items'][0]['table_id']
 
-# ... (前面的获取 Token 和 Table ID 代码保持不变) ...
-
 print("正在从飞书直抽原始数据(极速模式)...")
 # 🌟 删掉了拖慢速度的 view_id 参数，恢复极速拿取
 records_url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{table_id}/records?page_size=500"
@@ -54,6 +52,9 @@ for item in items:
     question = get_text("谜面", "").strip()
     answer = get_text("谜底", "").strip()
     difficulty = get_text("难度", "中等").strip()
+    
+    # 🌟 新增：提取“序”或“序号”字段的值
+    xu_number = get_text("序", "").strip()
 
     if not question:
         continue
@@ -64,8 +65,9 @@ for item in items:
 
     line_str = f"{title}|{question}|{answer}|{difficulty}"
 
-    # 🌟 核心分拣逻辑：认出“规则”并单独存放
-    if "规则" in title or "指南" in title:
+    # 🌟 核心分拣逻辑：精准认出“序”为 5 的记录并单独存放
+    # 飞书 API 传回来的数字有时是 "5"，有时会带小数点变成 "5.0"，所以做个兼容
+    if xu_number == "5" or xu_number == "5.0":
         rule_line = line_str
     else:
         normal_lines.append(line_str)
@@ -73,10 +75,13 @@ for item in items:
 # 🌟 本地极速排序：把普通汤直接倒置，最新的瞬间排到最前面！
 normal_lines.reverse()
 
-# 🌟 强行置顶：把规则无条件塞到第一位
+# 🌟 强行置顶：把抽出来的 5 号无条件塞到第一位
 final_lines = []
 if rule_line:
     final_lines.append(rule_line)
+else:
+    print("⚠️ 警告：没有找到'序'为 5 的记录，请检查飞书表格！")
+    
 final_lines.extend(normal_lines)
 
 print(f"成功抓取并排序 {len(final_lines)} 条海龟汤！")

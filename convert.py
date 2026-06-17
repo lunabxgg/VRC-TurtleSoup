@@ -48,12 +48,26 @@ for item in items:
             return "".join([str(x.get('text', '')) for x in field_data])
         return str(field_data)
 
-    title = get_text("标题", "无题").strip()
-    question = get_text("谜面", "").strip()
-    answer = get_text("谜底", "").strip()
-    difficulty = get_text("难度", "中等").strip()
+    # 🌟 新增：格式检查与内容清洗函数
+    def clean_format(text):
+        if not text: 
+            return ""
+        # 1. 删掉文本段落中可能出现的分割符 |，避免 txt 格式混乱
+        text = text.replace('|', '')
+        # 2. 精准识别指定的特殊标签整体，统一替换为 [/]
+        target_tags = ['[/r]', '[/o]', '[/y]', '[/g]', '[/c]', '[/b]', '[/p]']
+        for tag in target_tags:
+            text = text.replace(tag, '[/]')
+            text = text.replace(tag.upper(), '[/]')  # 顺便兼容大写，如 [/R] 也会被替换
+        return text
+
+    # 获取数据并同时进行格式检查清洗
+    title = clean_format(get_text("标题", "无题").strip())
+    question = clean_format(get_text("谜面", "").strip())
+    answer = clean_format(get_text("谜底", "").strip())
+    difficulty = clean_format(get_text("难度", "中等").strip())
     
-    # 🌟 新增：提取“序”或“序号”字段的值
+    # 🌟 提取“序”或“序号”字段的值（由于是用于判断的数字/序号，保持原样即可）
     xu_number = get_text("序", "").strip()
 
     if not question:
